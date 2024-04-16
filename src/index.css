@@ -21,3 +21,19 @@ code {
   border-color: #6ba964;
   color: #fff;
 }
+
+.wordle-yellow {
+  background-color: #b59f3b;
+  border-color: #b59f3b;
+  color: #fff;
+}
+
+.wordle-gray {
+  background-color: #3a3a3c;
+  border-color: #3a3a3c;
+  color: #fff;
+}
+
+.wordle-input {
+  letter-spacing: 1rem;
+}
