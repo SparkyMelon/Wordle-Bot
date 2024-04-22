@@ -5,23 +5,24 @@ import Header from './components/Header.js';
 import WordleInput from './components/WordleInput.js';
 import WordleOutput from './components/WordleOutput.js';
 
-// KNOWN BUG:
-// Correct letters: S C O R
-// Outputs correctly I think, now add this:
-// Letters in word: A
-// Not outputting correctly anymore
+const WORDLE_LENGTH = 5;
+const RESULT_LENGTH = 10;
 
 function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
-  // Create a map to store letter counts in different positions
-  const letterCounts = new Map();
-  for (let i = 0; i < 5; i++) {
-    letterCounts.set(i, new Map());
+  // Remove letter from 'lettersNotInWord' if the letter is in 'lettersInWord' to deal with Wordles way of saying there's only 1 of the letter
+  // TODO: This means that there is only 1 of this letter in the word
+  for (let i = 0; i < lettersNotInWord.length; i++) {
+    if (lettersInWord.includes(lettersNotInWord[i])) {
+      lettersNotInWord.splice(i--, 1);
+    }
   }
 
+  // Remove words based on input
+  // Correct letters
   const validWordsAvailable = [];
 
   validWordsLoop: for (const word of validWords) {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < WORDLE_LENGTH; i++) {
       if (correctLetters[i] && correctLetters[i] !== word[i]) {
         continue validWordsLoop;
       }
@@ -30,7 +31,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
     validWordsAvailable.push(word);
   }
 
-  // Letters In Word
+  // Letters in word
   lettersInWordLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
     for (const letterInWord of lettersInWord) {
       if (!validWordsAvailable[i].includes(letterInWord)) {
@@ -40,7 +41,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
     }
   }
 
-  // Letters Not In Word
+  // Letters not in word
   lettersNotInWordLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
     for (const letterNotInWord of lettersNotInWord) {
       if (validWordsAvailable[i].includes(letterNotInWord)) {
@@ -50,9 +51,15 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
     }
   }
 
+  // Create a map to store letter counts in different positions
+  const letterCounts = new Map();
+  for (let i = 0; i < WORDLE_LENGTH; i++) {
+    letterCounts.set(i, new Map());
+  }console.log(letterCounts);
+
   // Count letter occurrences in each position
   for (const word of validWordsAvailable) {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < WORDLE_LENGTH; i++) {
       const letter = word[i];
       const positionMap = letterCounts.get(i);
       positionMap.set(letter, (positionMap.get(letter) || 0) + 1);
@@ -62,7 +69,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
   // Define a function to score a word based on letter counts
   function scoreWord(word) {
     let score = 0;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < WORDLE_LENGTH; i++) {
       const letter = word[i];
       const positionMap = letterCounts.get(i);
       score += positionMap.get(letter) || 0;
@@ -135,30 +142,40 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
     }
   }
 
-  // Use a priority queue to efficiently track top 5 words
+  // Use a priority queue to efficiently track top words
   const topWords = new PriorityQueue((a, b) => b.score - a.score); // Prioritize higher scores
   for (const word of validWordsAvailable) {
     const wordScore = scoreWord(word);
 
-    // Ignore words that contain the same character twice (for optimal coverage on starting word)
-    if (new Set(word).size !== 5) continue;
+    // Ignore words that contain the same character twice at the start (for optimal coverage on starting word)
+    let emptyCorrectLetters = true;
+    for (let i = 0; i < WORDLE_LENGTH; i++) {
+      if (correctLetters[i]) {
+        emptyCorrectLetters = false;
+        break;
+      }
+    }
+    if (emptyCorrectLetters && lettersInWord.length == 0 && lettersNotInWord.length == 0) {
+      if (new Set(word).size !== WORDLE_LENGTH) continue;
+    }
 
     topWords.enqueue({ word, score: wordScore });
-    if (topWords.items.length > 5) {
-      topWords.dequeue(); // Remove lowest-scoring word if queue exceeds 5
+    if (topWords.items.length > RESULT_LENGTH) {
+      topWords.dequeue(); // Remove lowest-scoring word if queue exceeds limit
     }
   }
 
-  // Return the top 5 words from the priority queue
+  // Return the top words from the priority queue
   const bestWords = [];
   while (!topWords.isEmpty()) {
-    bestWords.push(topWords.dequeue().word);
+    // bestWords.push(topWords.dequeue().word);
+    bestWords.push(topWords.peek().word + ' (' + topWords.dequeue().score + ')');
   }
   return bestWords.reverse(); // Reverse to get the highest-scoring word first
 }
 
 function App() {
-  const [correctLetters, setCorrectLetters] = useState(Array(5).fill(''));
+  const [correctLetters, setCorrectLetters] = useState(Array(WORDLE_LENGTH).fill(''));
   const [lettersInWord, setLettersInWord] = useState('');
   const [lettersNotInWord, setLettersNotInWord] = useState('');
 
