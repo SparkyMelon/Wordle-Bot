@@ -1,33 +1,30 @@
-import React, { useRef } from 'react';
+import React from 'react';
 
-function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, onInputChange }) {
-  const inputRefs = useRef(Array(5).fill(null));
-
-  const handleUserInput = (event, index = null) => {
+function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, letterCoverage, onInputChange }) {
+  const handleUserInput = (event, i = null, j = null) => {
     const updatedState = {};
-
+    
     // Update state based on input type
-    if (index !== null) {
-      const newCorrectLetters = [...correctLetters];
-      newCorrectLetters[index] = event.target.value;
-      updatedState.correctLetters = newCorrectLetters;
+    if (i !== null) {
+      if (j !== null) {
+        const newLettersInWord = [...lettersInWord.map(row => [...row])];
+        newLettersInWord[i][j] = event.target.value;
+        updatedState.lettersInWord = newLettersInWord;
+      } else {
+        const newCorrectLetters = [...correctLetters];
+        newCorrectLetters[i] = event.target.value;
+        updatedState.correctLetters = newCorrectLetters;
+      }
     } else {
       const type = event.target.dataset.type;
-      if (type === 'lettersInWord') {
-        updatedState.lettersInWord = event.target.value;
-      } else {
+      if (type == 'lettersNotInWord') {
         updatedState.lettersNotInWord = event.target.value;
+      } else if (type == 'letterCoverage') {
+        updatedState.letterCoverage = !letterCoverage;
       }
     }
 
     onInputChange(updatedState);
-
-    // Handle focusing on next/previous input (for correctLetters only)
-    if (event.target.value && index !== null && index < 4) {
-      inputRefs.current[index + 1].focus();
-    } else if (!event.target.value && index !== null && index > 0) {
-      inputRefs.current[index - 1].focus();
-    }
   };
 
   return (
@@ -37,35 +34,58 @@ function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, onInputC
         {correctLetters.map((correctLetter, index) => (
           <input
             key={index}
-            ref={(el) => (inputRefs.current[index] = el)}
             type="text"
             maxLength={1}
             value={correctLetter}
             onChange={(event) => handleUserInput(event, index)}
             data-type="correctLetter"
-            className={`w-12 h-12 border border-gray-300 px-3 text-center text-xl font-bold uppercase focus:outline-none ${
-              correctLetter ? 'wordle-green' : ''
-            }`}
+            className="w-12 h-12 border border-gray-300 px-3 text-center text-xl font-bold uppercase focus:outline-none wordle-green"
           />
         ))}
       </div>
+
       <h2 className="text-2xl my-4 text-center text-gray-600">Letters in Word</h2>
-      <div className="flex justify-center">
-        <input
-          value={lettersInWord}
-          onChange={(event) => handleUserInput(event)}
-          data-type="lettersInWord"
-          className="h-12 border border-gray-300 px-3 text-xl font-bold uppercase focus:outline-none wordle-yellow wordle-input"
-        />
-      </div>
+      {lettersInWord.map((lettersInWordArray, i) => (
+        <div className={`flex space-x-2 justify-center ${
+          i === lettersInWord.length - 1 ? '' : 'mb-2'
+          }`} 
+          key={i}
+          >
+          {lettersInWordArray.map((letterInWord, j) => (
+            <input
+            key={`${i}-${j}`}
+            type="text"
+            maxLength={1}
+            value={letterInWord}
+            onChange={(event) => handleUserInput(event, i, j)}
+            data-type="letterInWord"
+            className="w-12 h-12 border border-gray-300 px-3 text-center text-xl font-bold uppercase focus:outline-none wordle-yellow"
+          />
+          ))}
+        </div>
+      ))}
+
       <h2 className="text-2xl my-4 text-center text-gray-600">Letters not in Word</h2>
       <div className="flex justify-center">
         <input
           value={lettersNotInWord}
           onChange={(event) => handleUserInput(event)}
           data-type="lettersNotInWord"
-          className="h-12 border border-gray-300 px-3 text-xl font-bold uppercase focus:outline-none wordle-gray wordle-input"
+          className="max-w-full h-12 border border-gray-300 px-3 text-xl font-bold uppercase focus:outline-none wordle-gray wordle-input"
         />
+      </div>
+
+      <h2 className="text-2xl my-4 text-center text-gray-600">Letter Coverage</h2>
+      <p className="text-gray-600 mb-4">Encourage the bot to use unused letters for better coverage.</p>
+      <div className="flex justify-center items-center">
+        <input
+          id="letterCoverage"
+          className="cursor-pointer h-8 w-16 rounded-full appearance-none bg-[#3a3a3c] checked:bg-[#6ba964] transition duration-200 relative"
+          type="checkbox"
+          role="switch"
+          data-type="letterCoverage"
+          checked={letterCoverage}
+          onChange={(event) => handleUserInput(event)} />
       </div>
     </div>
   );

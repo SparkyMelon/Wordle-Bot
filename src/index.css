@@ -37,3 +37,12 @@ code {
 .wordle-input {
   letter-spacing: 1rem;
 }
+
+#letterCoverage::after {
+  content: '';
+  @apply h-8 w-8 rounded-full bg-gray-100 absolute transform scale-75 transition duration-200;
+}
+
+#letterCoverage:checked::after {
+  @apply transform scale-75 translate-x-8 bg-gray-100;
+}

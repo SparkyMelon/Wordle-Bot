@@ -8,12 +8,33 @@ import WordleOutput from './components/WordleOutput.js';
 const WORDLE_LENGTH = 5;
 const RESULT_LENGTH = 10;
 
-function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
+function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCoverage) {
+  // Get a list of all unsued letters to be used in coverage check
+  // Do not need to worry about lettersNotInWord as words with these letters will not be in the result
+  const allLetters = new Set('abcdefghijklmnopqrstuvwxyz');
+  let usedLetters = new Set();
+  for (const correctLetter of correctLetters) {
+    if (correctLetter) {
+      usedLetters.add(correctLetter);
+    }
+  }
+  for (const lettersInWordArray of lettersInWord) {
+    for (const letterInWord of lettersInWordArray) {
+      if (letterInWord) {
+        usedLetters.add(letterInWord);
+      }
+    }
+  }
+  const unusedLetters = Array.from(allLetters).filter(letter => !usedLetters.has(letter));console.log(unusedLetters);
+
+  // TODO: Use the unusedLetters array to adjust word score if letterCoverage is true, maybe even modify the priority queue comparison for it too
+
   // Remove letter from 'lettersNotInWord' if the letter is in 'lettersInWord' to deal with Wordles way of saying there's only 1 of the letter
-  // TODO: This means that there is only 1 of this letter in the word
   for (let i = 0; i < lettersNotInWord.length; i++) {
-    if (lettersInWord.includes(lettersNotInWord[i])) {
-      lettersNotInWord.splice(i--, 1);
+    for (const lettersInWordArray of lettersInWord) {
+      if (lettersInWordArray.includes(lettersNotInWord[i])) {
+        lettersNotInWord.splice(i--, 1);
+      }
     }
   }
 
@@ -31,22 +52,23 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
     validWordsAvailable.push(word);
   }
 
-  // Letters in word
-  lettersInWordLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
-    for (const letterInWord of lettersInWord) {
-      if (!validWordsAvailable[i].includes(letterInWord)) {
-        validWordsAvailable.splice(i--, 1);
-        continue lettersInWordLoop;
+  validWordsLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
+    // Letters in word
+    for (const lettersInWordArray of lettersInWord) {
+      for (let j = 0; j < lettersInWordArray.length; j++) {
+        if (!validWordsAvailable[i].includes(lettersInWordArray[j]) ||
+            validWordsAvailable[i][j] == lettersInWordArray[j]) {
+          validWordsAvailable.splice(i--, 1);
+          continue validWordsLoop;
+        }
       }
     }
-  }
 
-  // Letters not in word
-  lettersNotInWordLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
+    // Letters not in word
     for (const letterNotInWord of lettersNotInWord) {
       if (validWordsAvailable[i].includes(letterNotInWord)) {
         validWordsAvailable.splice(i--, 1);
-        continue lettersNotInWordLoop;
+        continue validWordsLoop;
       }
     }
   }
@@ -55,7 +77,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
   const letterCounts = new Map();
   for (let i = 0; i < WORDLE_LENGTH; i++) {
     letterCounts.set(i, new Map());
-  }console.log(letterCounts);
+  }
 
   // Count letter occurrences in each position
   for (const word of validWordsAvailable) {
@@ -155,7 +177,18 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
         break;
       }
     }
-    if (emptyCorrectLetters && lettersInWord.length == 0 && lettersNotInWord.length == 0) {
+
+    let emptyLettersInWord = true;
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < WORDLE_LENGTH; j++) {
+        if (lettersInWord[i][j]) {
+          emptyLettersInWord = false;
+          break;
+        }
+      }
+    }
+
+    if (emptyCorrectLetters && emptyLettersInWord && lettersNotInWord.length == 0) {
       if (new Set(word).size !== WORDLE_LENGTH) continue;
     }
 
@@ -169,24 +202,29 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord) {
   const bestWords = [];
   while (!topWords.isEmpty()) {
     // bestWords.push(topWords.dequeue().word);
-    bestWords.push(topWords.peek().word + ' (' + topWords.dequeue().score + ')');
+    //bestWords.push(topWords.peek().word + ' (' + topWords.dequeue().score + ')');
+    bestWords.push({
+      word: topWords.peek().word,
+      score: topWords.dequeue().score
+    });
   }
   return bestWords.reverse(); // Reverse to get the highest-scoring word first
 }
 
 function App() {
   const [correctLetters, setCorrectLetters] = useState(Array(WORDLE_LENGTH).fill(''));
-  const [lettersInWord, setLettersInWord] = useState('');
+  const [lettersInWord, setLettersInWord] = useState(Array(5).fill(Array(WORDLE_LENGTH).fill('')));
   const [lettersNotInWord, setLettersNotInWord] = useState('');
+  const [letterCoverage, setLetterCoverage] = useState(true);
 
   const handleInputChange = (updatedState) => {
     setCorrectLetters(updatedState.correctLetters || correctLetters);
-
-    updatedState.lettersInWord == undefined ? setLettersInWord(lettersInWord) : setLettersInWord(updatedState.lettersInWord)
-    updatedState.lettersNotInWord == undefined ? setLettersNotInWord(lettersNotInWord) : setLettersNotInWord(updatedState.lettersNotInWord)
+    setLettersInWord(updatedState.lettersInWord || lettersInWord);
+    updatedState.lettersNotInWord == undefined ? setLettersNotInWord(lettersNotInWord) : setLettersNotInWord(updatedState.lettersNotInWord);
+    updatedState.letterCoverage == undefined ? setLetterCoverage(letterCoverage) : setLetterCoverage(updatedState.letterCoverage);
   }
 
-  const bestWords = findBestWords(correctLetters, [...lettersInWord], [...lettersNotInWord]);
+  const bestWords = findBestWords(correctLetters, [...lettersInWord.map(row => [...row])], [...lettersNotInWord], letterCoverage);
 
   return (
     <div className="bg-gray-100 h-screen">
@@ -198,6 +236,7 @@ function App() {
               correctLetters={correctLetters}
               lettersInWord={lettersInWord}
               lettersNotInWord={lettersNotInWord}
+              letterCoverage={letterCoverage}
               onInputChange={handleInputChange} />
           </div>
           <div className="w-full mt-4 md:mt-0">
