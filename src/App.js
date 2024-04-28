@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { validWords } from './utils/wordle_words.js';
+import { validWordsV2 } from './utils/wordle_words_v2.js';
 import Header from './components/Header.js';
 import WordleInput from './components/WordleInput.js';
 import WordleOutput from './components/WordleOutput.js';
 
 const WORDLE_LENGTH = 5;
 const RESULT_LENGTH = 10;
+const BONUS_MODIFIER_FOR_UNUSED_LETTER = 2;
 
 function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCoverage) {
   // Get a list of all unsued letters to be used in coverage check
@@ -25,9 +27,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
       }
     }
   }
-  const unusedLetters = Array.from(allLetters).filter(letter => !usedLetters.has(letter));console.log(unusedLetters);
-
-  // TODO: Use the unusedLetters array to adjust word score if letterCoverage is true, maybe even modify the priority queue comparison for it too
+  const unusedLetters = Array.from(allLetters).filter(letter => !usedLetters.has(letter));
 
   // Remove letter from 'lettersNotInWord' if the letter is in 'lettersInWord' to deal with Wordles way of saying there's only 1 of the letter
   for (let i = 0; i < lettersNotInWord.length; i++) {
@@ -40,9 +40,9 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
 
   // Remove words based on input
   // Correct letters
-  const validWordsAvailable = [];
+  let validWordsAvailable = [];
 
-  validWordsLoop: for (const word of validWords) {
+  validWordsLoop: for (const word of validWordsV2) {
     for (let i = 0; i < WORDLE_LENGTH; i++) {
       if (correctLetters[i] && correctLetters[i] !== word[i]) {
         continue validWordsLoop;
@@ -53,22 +53,24 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
   }
 
   validWordsLoop: for (let i = 0; i < validWordsAvailable.length; i++) {
-    // Letters in word
-    for (const lettersInWordArray of lettersInWord) {
-      for (let j = 0; j < lettersInWordArray.length; j++) {
-        if (!validWordsAvailable[i].includes(lettersInWordArray[j]) ||
-            validWordsAvailable[i][j] == lettersInWordArray[j]) {
-          validWordsAvailable.splice(i--, 1);
-          continue validWordsLoop;
-        }
-      }
-    }
-
     // Letters not in word
     for (const letterNotInWord of lettersNotInWord) {
       if (validWordsAvailable[i].includes(letterNotInWord)) {
         validWordsAvailable.splice(i--, 1);
         continue validWordsLoop;
+      }
+    }
+
+    // Letters in word
+    for (const lettersInWordArray of lettersInWord) {
+      for (let j = 0; j < lettersInWordArray.length; j++) {
+        if (lettersInWordArray[j] != '') {
+          if (!validWordsAvailable[i].includes(lettersInWordArray[j]) ||
+          validWordsAvailable[i][j] == lettersInWordArray[j]) {
+            validWordsAvailable.splice(i--, 1);
+            continue validWordsLoop;
+          }
+        }
       }
     }
   }
@@ -89,12 +91,23 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
   }
 
   // Define a function to score a word based on letter counts
-  function scoreWord(word) {
+  function scoreWord(word, letterCoverage, unusedLetters) {
     let score = 0;
+    let letters = [];
     for (let i = 0; i < WORDLE_LENGTH; i++) {
       const letter = word[i];
+
+      if (letterCoverage && letters.includes(word[i])) continue;
+
       const positionMap = letterCounts.get(i);
-      score += positionMap.get(letter) || 0;
+      let letterScore = positionMap.get(letter) || 0;
+
+      if (letterCoverage && unusedLetters.includes(letter)) {
+        letterScore *= BONUS_MODIFIER_FOR_UNUSED_LETTER;
+      }
+
+      score += letterScore;
+      letters.push(letter);
     }
     return score;
   }
@@ -167,7 +180,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
   // Use a priority queue to efficiently track top words
   const topWords = new PriorityQueue((a, b) => b.score - a.score); // Prioritize higher scores
   for (const word of validWordsAvailable) {
-    const wordScore = scoreWord(word);
+    const wordScore = scoreWord(word, letterCoverage, unusedLetters);
 
     // Ignore words that contain the same character twice at the start (for optimal coverage on starting word)
     let emptyCorrectLetters = true;
@@ -196,7 +209,7 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
     if (topWords.items.length > RESULT_LENGTH) {
       topWords.dequeue(); // Remove lowest-scoring word if queue exceeds limit
     }
-  }
+  }console.log(topWords.items.length);
 
   // Return the top words from the priority queue
   const bestWords = [];
@@ -208,6 +221,12 @@ function findBestWords(correctLetters, lettersInWord, lettersNotInWord, letterCo
       score: topWords.dequeue().score
     });
   }
+
+  return {
+    bestWords: bestWords.reverse(),
+    count: validWordsAvailable.length
+  };
+
   return bestWords.reverse(); // Reverse to get the highest-scoring word first
 }
 
@@ -216,6 +235,8 @@ function App() {
   const [lettersInWord, setLettersInWord] = useState(Array(5).fill(Array(WORDLE_LENGTH).fill('')));
   const [lettersNotInWord, setLettersNotInWord] = useState('');
   const [letterCoverage, setLetterCoverage] = useState(true);
+  const [bestWords, setBestWords] = useState(Array(10).fill(''));
+  const [bestWordsCount, setBestWordsCount] = useState(0);
 
   const handleInputChange = (updatedState) => {
     setCorrectLetters(updatedState.correctLetters || correctLetters);
@@ -224,7 +245,20 @@ function App() {
     updatedState.letterCoverage == undefined ? setLetterCoverage(letterCoverage) : setLetterCoverage(updatedState.letterCoverage);
   }
 
-  const bestWords = findBestWords(correctLetters, [...lettersInWord.map(row => [...row])], [...lettersNotInWord], letterCoverage);
+  //const bestWords = findBestWords(correctLetters, [...lettersInWord.map(row => [...row])], [...lettersNotInWord], letterCoverage);
+  useEffect(() => {
+    const fetchBestWords = async () => {
+      try {
+        const results = await findBestWords(correctLetters, [...lettersInWord.map(row => [...row])], [...lettersNotInWord], letterCoverage);
+        setBestWords(results.bestWords);
+        setBestWordsCount(results.count);
+      } catch (error) {
+        console.error("Error fetching best words:", error);
+      }
+    };
+
+    fetchBestWords();
+  }, [correctLetters, lettersInWord, lettersNotInWord, letterCoverage]);
 
   return (
     <div className="bg-gray-100 h-screen">
@@ -241,7 +275,8 @@ function App() {
           </div>
           <div className="w-full mt-4 md:mt-0">
             <WordleOutput
-              bestWords={bestWords} />
+              bestWords={bestWords}
+              bestWordsCount={bestWordsCount} />
           </div>
         </div>
       </div>
