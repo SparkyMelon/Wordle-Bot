@@ -261,11 +261,11 @@ function App() {
   }, [correctLetters, lettersInWord, lettersNotInWord, letterCoverage]);
 
   return (
-    <div className="bg-gray-100 h-screen">
+    <div className="bg-gray-100 min-h-screen">
       <div className="container mx-auto py-8 px-10 max-w-screen-lg">
         <Header />
         <div className="grid grid-cols-1 md:grid-cols-2 mt-8">
-          <div className="w-full">
+          <div className="flex justify-center">
             <WordleInput
               correctLetters={correctLetters}
               lettersInWord={lettersInWord}

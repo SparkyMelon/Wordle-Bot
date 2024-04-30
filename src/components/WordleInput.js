@@ -28,8 +28,8 @@ function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, letterCo
   };
 
   return (
-    <div>
-      <h2 className="text-2xl my-4 text-center text-gray-600">Correct Letters</h2>
+    <div className="max-w-[288px]">
+      <h2 className="text-2xl font-bold my-4 text-center text-gray-600">Correct Letters</h2>
       <div className="flex space-x-2 justify-center">
         {correctLetters.map((correctLetter, index) => (
           <input
@@ -39,12 +39,12 @@ function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, letterCo
             value={correctLetter}
             onChange={(event) => handleUserInput(event, index)}
             data-type="correctLetter"
-            className="w-12 h-12 border border-gray-300 px-3 text-center text-xl font-bold uppercase focus:outline-none wordle-green"
+            className="w-12 h-12 text-4xl border border-gray-300 px-3 text-center pb-1 font-bold uppercase focus:outline-none wordle-green"
           />
         ))}
       </div>
 
-      <h2 className="text-2xl my-4 text-center text-gray-600">Letters in Word</h2>
+      <h2 className="text-2xl font-bold my-4 text-center text-gray-600">Letters in Word</h2>
       {lettersInWord.map((lettersInWordArray, i) => (
         <div className={`flex space-x-2 justify-center ${
           i === lettersInWord.length - 1 ? '' : 'mb-2'
@@ -59,24 +59,24 @@ function WordleInput({ correctLetters, lettersInWord, lettersNotInWord, letterCo
             value={letterInWord}
             onChange={(event) => handleUserInput(event, i, j)}
             data-type="letterInWord"
-            className="w-12 h-12 border border-gray-300 px-3 text-center text-xl font-bold uppercase focus:outline-none wordle-yellow"
+            className="w-12 h-12 text-4xl border border-gray-300 px-3 text-center pb-1 font-bold uppercase focus:outline-none wordle-yellow"
           />
           ))}
         </div>
       ))}
 
-      <h2 className="text-2xl my-4 text-center text-gray-600">Letters not in Word</h2>
+      <h2 className="text-2xl font-bold my-4 text-center text-gray-600">Letters not in Word</h2>
       <div className="flex justify-center">
         <input
           value={lettersNotInWord}
           onChange={(event) => handleUserInput(event)}
           data-type="lettersNotInWord"
-          className="max-w-full h-12 border border-gray-300 px-3 text-xl font-bold uppercase focus:outline-none wordle-gray wordle-input"
+          className="max-w-full h-12 text-4xl border border-gray-300 px-3 pb-1 font-bold uppercase focus:outline-none wordle-gray wordle-input"
         />
       </div>
 
-      <h2 className="text-2xl my-4 text-center text-gray-600">Letter Coverage</h2>
-      <p className="text-gray-600 mb-4">Encourage the bot to use unused letters for better coverage.</p>
+      <h2 className="text-2xl font-bold my-4 text-center text-gray-600">Letter Coverage</h2>
+      <p className="text-center text-gray-600 mb-4">Encourage the bot to use unused letters for better coverage.</p>
       <div className="flex justify-center items-center">
         <input
           id="letterCoverage"
